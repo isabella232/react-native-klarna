@@ -1,6 +1,8 @@
 #import "RNKlarnaView.h"
 #import <KlarnaCheckoutSDK/KlarnaCheckout.h>
 
+NSString *const kReturnURLInfoDictionaryKey = @"ReturnURLKlarna";
+
 @interface RNKlarnaView ()
 
 @property (nonatomic, retain) KCOKlarnaCheckout *checkout;
@@ -13,7 +15,7 @@
 
 - (NSURL *)returnURL {
     NSDictionary* infoDict = [[NSBundle mainBundle] infoDictionary];
-    NSString* returnString = [infoDict objectForKey:@"ReturnURLKlarna"];
+    NSString* returnString = [infoDict objectForKey:kReturnURLInfoDictionaryKey];
     return [NSURL URLWithString:returnString];
 }
 
@@ -82,8 +84,8 @@
 }
 
 - (void)onCheckoutComplete:(NSDictionary *)event {
-    if(_onComplete) {
-        _onComplete(event);
+    if (self.onComplete) {
+        self.onComplete(event);
     }
 }
 
@@ -93,7 +95,7 @@
     NSDictionary *completeEvent = @{@"type": @"onComplete",
                                     @"data": data,
                                     @"signalType": name};
-    [self onCheckoutComplete: completeEvent];
+    [self onCheckoutComplete:completeEvent];
 }
 
 @end
