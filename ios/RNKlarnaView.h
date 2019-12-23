@@ -9,7 +9,7 @@
 @property (nonatomic) UIView *klarnaView;
 @property (nonatomic) KCOKlarnaCheckout *checkout;
 @property (nonatomic) UIViewController<KCOCheckoutViewControllerProtocol> *klarnaVC;
-@property (assign, nonatomic) NSString *snippet;
+@property (nonatomic, copy) NSString *snippet;
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateSnippet;
 - (void)onCheckoutComplete:(NSDictionary *)event;

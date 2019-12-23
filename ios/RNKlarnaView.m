@@ -6,54 +6,83 @@
 @interface RNKlarnaView ()
 @property (nonatomic, weak) RCTBridge *bridge;
 @property (nonatomic, copy) RCTBubblingEventBlock onComplete;
-- (UIViewController *)parentViewController;
+@property (nonatomic, readonly) NSURL *returnURL;
+@property (nonatomic, readonly) UIViewController *parentViewController;
 @end
+
 @implementation RNKlarnaView
-- (id)initWithBridge:(RCTBridge *)bridge
-{
+
+- (NSURL *)returnURL {
+    NSDictionary* infoDict = [[NSBundle mainBundle] infoDictionary];
+    NSString* returnString = [infoDict objectForKey:@"ReturnURLKlarna"];
+    return [NSURL URLWithString:returnString];
+}
+
+- (UIViewController *)parentViewController {
+    UIResponder *responder = self;
+    while (responder && ![responder isKindOfClass:[UIViewController class]]) {
+        responder = [responder nextResponder];
+    }
+    return (UIViewController *)responder;
+}
+
+- (void)setSnippet:(NSString *)snippet {
+    _snippet = [snippet copy];
+    [self updateSnippet];
+}
+
+- (id)initWithBridge:(RCTBridge *)bridge {
     if ((self = [super init])) {
         self.bridge = bridge;
-        NSDictionary* infoDict = [[NSBundle mainBundle] infoDictionary];
-
-        NSString* returnString = [infoDict objectForKey:@"ReturnURLKlarna"];
-        NSURL* returnUrl = [NSURL URLWithString:returnString];
-        UIViewController *ctrl = [self parentViewController];
-
-        self.checkout = [[KCOKlarnaCheckout alloc] initWithViewController:ctrl returnURL:returnUrl];
-        self.klarnaVC = [self.checkout checkoutViewController];
-        [ctrl addChildViewController:_klarnaVC];
-        self.klarnaView = _klarnaVC.view;
-        [[NSNotificationCenter defaultCenter] addObserver:self 
-                                                selector:@selector(handleNotification:) 
-                                                  name:KCOSignalNotification 
-                                                    object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleNotification:)
+                                                     name:KCOSignalNotification
+                                                   object:nil];
     }
     return self;
 }
-- (void)layoutSubviews
-{
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)layoutSubviews {
     [super layoutSubviews];
-    self.klarnaView.frame = self.bounds;
-    [self setBackgroundColor:[UIColor blackColor]];
-    [self addSubview:self.klarnaView];
+    UIViewController *parentViewController = self.parentViewController;
+    if (self.parentViewController && !self.checkout) {
+        KCOKlarnaCheckout *checkout = [[KCOKlarnaCheckout alloc] initWithViewController:self.parentViewController
+                                                                              returnURL:self.returnURL];
+        [checkout setSnippet:self.snippet];
+        UIViewController<KCOCheckoutViewControllerProtocol> *checkoutViewController = checkout.checkoutViewController;
+        [self.parentViewController addChildViewController:checkoutViewController];
+        checkoutViewController.view.frame = self.bounds;
+        checkoutViewController.view.translatesAutoresizingMaskIntoConstraints = true;
+        checkoutViewController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self addSubview:checkoutViewController.view];
+        [checkoutViewController didMoveToParentViewController:parentViewController];
+        self.checkout = checkout;
+        self.klarnaVC = checkoutViewController;
+        self.klarnaView = checkoutViewController.view;
+    }
 }
 
-- (void)removeFromSuperview
-{
-    [super removeFromSuperview];
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                            name:KCOSignalNotification 
-                                              object:nil];
+- (void)willMoveToSuperview:(UIView *)newSuperview {
+    if (newSuperview != nil)
+        return;
+    [self.checkout.checkoutViewController willMoveToParentViewController:nil];
+    [self.checkout.checkoutViewController.view removeFromSuperview];
+    [self.checkout.checkoutViewController removeFromParentViewController];
+    [self.checkout destroy];
+    self.checkout = nil;
 }
 
--(void)updateSnippet
-{
-  if ([self.snippet isEqualToString:@"error"]) {
-    [self.checkout setSnippet: @""];
-    [self.klarnaVC dismissViewControllerAnimated:YES completion:nil];
-  } else {
-    [self.checkout setSnippet: self.snippet];
-  }
+- (void)updateSnippet {
+    if ([self.snippet isEqualToString:@"error"]) {
+        [self.checkout setSnippet: @""];
+        [self.klarnaVC dismissViewControllerAnimated:YES completion:nil];
+    } else {
+        [self.checkout setSnippet: self.snippet];
+    }
 }
 
 - (void)onCheckoutComplete:(NSDictionary *)event
@@ -70,10 +99,4 @@
     [self onCheckoutComplete: completeEvent];
 }
 
-- (UIViewController *)parentViewController {
-    UIResponder *responder = self;
-    while ([responder isKindOfClass:[UIView class]])
-        responder = [responder nextResponder];
-    return (UIViewController *)responder;
-}
 @end
