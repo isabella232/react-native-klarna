@@ -1,13 +1,12 @@
 #import "RNKlarnaView.h"
-#import <React/RCTEventDispatcher.h>
-#import <React/RCTUtils.h>
-#import <React/RCTComponent.h>
+#import <KlarnaCheckoutSDK/KlarnaCheckout.h>
 
 @interface RNKlarnaView ()
-@property (nonatomic, weak) RCTBridge *bridge;
-@property (nonatomic, copy) RCTBubblingEventBlock onComplete;
+
+@property (nonatomic, retain) KCOKlarnaCheckout *checkout;
 @property (nonatomic, readonly) NSURL *returnURL;
 @property (nonatomic, readonly) UIViewController *parentViewController;
+
 @end
 
 @implementation RNKlarnaView
@@ -31,9 +30,8 @@
     [self updateSnippet];
 }
 
-- (id)initWithBridge:(RCTBridge *)bridge {
-    if ((self = [super init])) {
-        self.bridge = bridge;
+- (instancetype)initWithFrame:(CGRect)frame {
+    if (self = [super initWithFrame:frame]) {
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(handleNotification:)
                                                      name:KCOSignalNotification
@@ -61,8 +59,6 @@
         [self addSubview:checkoutViewController.view];
         [checkoutViewController didMoveToParentViewController:parentViewController];
         self.checkout = checkout;
-        self.klarnaVC = checkoutViewController;
-        self.klarnaView = checkoutViewController.view;
     }
 }
 
@@ -78,24 +74,25 @@
 
 - (void)updateSnippet {
     if ([self.snippet isEqualToString:@"error"]) {
-        [self.checkout setSnippet: @""];
-        [self.klarnaVC dismissViewControllerAnimated:YES completion:nil];
+        [self.checkout setSnippet:@""];
+        [self.checkout.checkoutViewController dismissViewControllerAnimated:YES completion:nil];
     } else {
-        [self.checkout setSnippet: self.snippet];
+        [self.checkout setSnippet:self.snippet];
     }
 }
 
-- (void)onCheckoutComplete:(NSDictionary *)event
-{   
-  if(_onComplete) {
-    _onComplete(event);
-  }
+- (void)onCheckoutComplete:(NSDictionary *)event {
+    if(_onComplete) {
+        _onComplete(event);
+    }
 }
 
 - (void)handleNotification:(NSNotification *)notification {
     NSString *name = notification.userInfo[KCOSignalNameKey];
     NSDictionary *data = notification.userInfo[KCOSignalDataKey];
-    NSDictionary *completeEvent = @{@"type" : @"onComplete", @"data" : data, @"signalType" : name};
+    NSDictionary *completeEvent = @{@"type": @"onComplete",
+                                    @"data": data,
+                                    @"signalType": name};
     [self onCheckoutComplete: completeEvent];
 }
 
