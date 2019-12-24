@@ -10,7 +10,7 @@ or
 
 `$ react-native link react-native-klarna`
 
-For RN > 0.60 pleas follow `After either route` step for iOS and for Android within repositories block of the dependencies block add:
+For RN > 0.60 please follow `After either route` step for iOS and for Android within repositories block of the dependencies block add:
     ```gradle
         maven { url 'https://x.klarnacdn.net/mobile-sdk/'}
     ```
@@ -43,7 +43,7 @@ Add the following key with your bundle name to your Info.plist:
 
 #### Android
 
-1. Open `android/app/src/main/java/[...]/MainActivity.java`
+1.  Open `android/app/src/main/java/[...]/MainActivity.java`
 
 - Add `import com.rnklarna.RNKlarnaPackage;` to the imports at the top of the file
 - Add `new RNKlarnaPackage()` to the list returned by the `getPackages()` method
@@ -107,6 +107,12 @@ Add the following key with your bundle name to your Info.plist:
     <activity
       android:launchMode="singleTask|singleTop">
     ```
+
+6.  In your `android/build.gradle` add this line into the `buildscript/ext` section:
+    ```gradle
+    klarnaCheckoutVersion = "1.6.12"
+    ```
+    To upgrade to the latest version of the SDK simply change `1.6.12` to the desired version.
 
 ## Usage Example
 Typical usage example is shown below, there is also an example app in example/basic
