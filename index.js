@@ -1,11 +1,12 @@
 // @flow
 import * as React from 'react';
-import { requireNativeComponent, View } from 'react-native';
+import { requireNativeComponent } from 'react-native';
+import type { ViewStyleProp } from 'react-native/Libraries/StyleSheet/StyleSheet';
 
 type Props = {
   snippet: string,
-  onComplete: ?Function,
-  style?: StyleSheet.Styles,
+  onComplete?: (nativeEvent: NativeEvent) => void,
+  style?: ViewStyleProp,
 };
 
 export type NativeEvent = {
@@ -23,24 +24,17 @@ export default class RNKlarna extends React.Component<Props> {
     snippet: '',
   };
 
-  onComplete = (callback: ?Function) => ({ nativeEvent }: { nativeEvent: Object }) => {
-    if (callback) {
-      callback(nativeEvent);
+  _onComplete = ({ nativeEvent }: { nativeEvent: NativeEvent }) => {
+    const { onComplete } = this.props;
+    if (onComplete) {
+      onComplete(nativeEvent);
     }
   };
 
   render() {
-    const { snippet, onComplete, style } = this.props;
-    return (
-      <View style={style}>
-        <Klarna flex={1} snippet={snippet} onComplete={this.onComplete(onComplete)} />
-      </View>
-    );
+    const { snippet, style } = this.props;
+    return <Klarna style={style} snippet={snippet} onComplete={this._onComplete} />;
   }
 }
 
-const Klarna = requireNativeComponent('RNKlarna', RNKlarna, {
-  nativeOnly: {
-    onComplete: true,
-  },
-});
+const Klarna = requireNativeComponent('RNKlarna');
