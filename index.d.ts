@@ -2,8 +2,8 @@ import { Component } from 'react';
 import { ViewProperties, ViewStyle } from 'react-native';
 
 export interface KlarnaProps {
-  snippet: string;
-  onComplete: (response: NativeEvent) => void;
+  snippet?: string;
+  onComplete?: (response: NativeEvent) => void;
   style?: ViewStyle;
 }
 
