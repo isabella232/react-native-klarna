@@ -1,11 +1,12 @@
 package com.rnklarna;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.res.Resources;
 import android.view.View;
 import android.view.ViewGroup;
 import android.util.Log;
+import android.widget.FrameLayout;
+import android.widget.ScrollView;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableArray;
@@ -14,7 +15,6 @@ import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
 
 import com.klarna.checkout.KlarnaCheckout;
-import com.klarna.checkout.SignalListener;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -22,73 +22,103 @@ import org.json.JSONObject;
 
 import java.util.Iterator;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
-public class KlarnaView extends View {
+public class KlarnaView extends FrameLayout {
 
-  private final ThemedReactContext appContext;
-  private KlarnaCheckout mCheckout;
-  private View mView;
+  private final @Nonnull ThemedReactContext appContext;
+  private final @Nonnull FrameLayout mContainerView;
+  private final @Nonnull ScrollView mScrollView;
 
-  public KlarnaView(ThemedReactContext themedReactContext) {
-    super(themedReactContext, null);
+  private @Nullable KlarnaCheckout mCheckout;
+  private @Nullable String mSnippet;
+
+  public KlarnaView(@Nonnull ThemedReactContext themedReactContext) {
+    super(themedReactContext);
     this.appContext = themedReactContext;
-    Activity activity = themedReactContext.getCurrentActivity();
-    if (activity != null) {
-      mCheckout = new KlarnaCheckout(activity, getReturnURL());
-      mCheckout.setSnippet("snippet");
-      mCheckout.setSignalListener(new SignalListener() {
-        @Override
-        public void onSignal(String eventName, JSONObject jsonObject) {
-          onReceiveNativeEvent(jsonObject, eventName);
-        }
-      });
-      View klarnaView = mCheckout.getView();
-      if (klarnaView != null) {
-        View view = mCheckout.getView();
-        mView =  view;
-      } else {
-        mView = new View(themedReactContext);
-      }
-    } else {
-      mView = new View(themedReactContext);
+
+    ScrollView scrollView = new ScrollView(themedReactContext);
+    mScrollView = scrollView;
+    scrollView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    addView(scrollView);
+
+    FrameLayout containerView = new FrameLayout(themedReactContext);
+    mContainerView = containerView;
+    containerView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    scrollView.addView(containerView);
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    if (mCheckout != null) {
+      return;
     }
+    Activity activity = this.appContext.getCurrentActivity();
+    if (activity == null) {
+      return;
+    }
+    KlarnaCheckout checkout = new KlarnaCheckout(activity, getReturnURL());
+    checkout.setSnippet(mSnippet);
+    checkout.setSignalListener((eventName, jsonObject) -> onReceiveNativeEvent(jsonObject, eventName));
+    View klarnaView = checkout.getView();
+    if (klarnaView == null) {
+      return;
+    }
+    mContainerView.addView(checkout.getView());
+    mCheckout = checkout;
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    super.onDetachedFromWindow();
+    if (mCheckout == null) {
+      return;
+    }
+    mContainerView.removeAllViews();
+    mCheckout.destroy();
+    mCheckout = null;
+  }
+
+  public void onReceiveNativeEvent(JSONObject jsonObject, String eventName) {
+    appContext.getJSModule(RCTEventEmitter.class).receiveEvent(
+            getId(),
+            "onComplete",
+            serializeEventData(jsonObject, eventName, getId())
+    );
+  }
+
+  public void setSnippet(@Nullable String snippet) {
+    this.mSnippet = snippet;
+    updateSnippet();
   }
 
   private String getReturnURL() {
-    Context context = this.getContext();
-    int resId = context.getResources().getIdentifier("return_url_klarna", "string", context.getPackageName());
+    int resId = appContext.getResources().getIdentifier(
+            "return_url_klarna",
+            "string",
+            appContext.getPackageName()
+    );
     String returnURL;
     try {
-      returnURL = context.getString(resId);
+      returnURL = appContext.getString(resId);
     } catch (Resources.NotFoundException e) {
-      returnURL = context.getPackageName();
+      returnURL = appContext.getPackageName();
     }
     return returnURL;
   }
 
-  public View getmView() {
-    return mView;
-  }
-
-  public void onReceiveNativeEvent(JSONObject jsonObject, String eventName) {
-    if (this.getmView().getParent() != null
-            && this.getmView().getParent().getParent() != null
-            && this.getmView().getParent().getParent().getParent() != null
-            && this.getmView().getParent().getParent().getParent().getParent() != null ) {
-
-      int id = ((ViewGroup)this.getmView().getParent().getParent().getParent().getParent()).getId();
-      this.appContext.getJSModule(RCTEventEmitter.class).receiveEvent(id, "onComplete", serializeEventData(jsonObject, eventName, id));
+  private void updateSnippet() {
+    if (mCheckout == null) {
+      return;
     }
-  }
-
-  public void setSnippet(String snippet) {
-    if (snippet.equals("error")) {
+    if (mSnippet != null && mSnippet.equals("error")) {
       mCheckout.destroy();
     } else {
-      if (mCheckout != null) {
-        mCheckout.setSnippet(snippet);
-      }
+      mCheckout.setSnippet(mSnippet);
     }
+    mScrollView.scrollTo(0, 0);
   }
 
   public static WritableMap serializeEventData(JSONObject jsonObject, String eventName, int id) {
