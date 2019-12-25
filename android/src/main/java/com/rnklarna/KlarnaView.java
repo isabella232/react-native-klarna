@@ -1,6 +1,8 @@
 package com.rnklarna;
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.res.Resources;
 import android.view.View;
 import android.view.ViewGroup;
 import android.util.Log;
@@ -32,8 +34,7 @@ public class KlarnaView extends View {
     this.appContext = themedReactContext;
     Activity activity = themedReactContext.getCurrentActivity();
     if (activity != null) {
-      String name = themedReactContext.getPackageName();
-      mCheckout = new KlarnaCheckout(activity, name);
+      mCheckout = new KlarnaCheckout(activity, getReturnURL());
       mCheckout.setSnippet("snippet");
       mCheckout.setSignalListener(new SignalListener() {
         @Override
@@ -53,6 +54,18 @@ public class KlarnaView extends View {
     }
   }
 
+  private String getReturnURL() {
+    Context context = this.getContext();
+    int resId = context.getResources().getIdentifier("return_url_klarna", "string", context.getPackageName());
+    String returnURL;
+    try {
+      returnURL = context.getString(resId);
+    } catch (Resources.NotFoundException e) {
+      returnURL = context.getPackageName();
+    }
+    return returnURL;
+  }
+
   public View getmView() {
     return mView;
   }
@@ -70,7 +83,7 @@ public class KlarnaView extends View {
 
   public void setSnippet(String snippet) {
     if (snippet.equals("error")) {
-       mCheckout.destroy();
+      mCheckout.destroy();
     } else {
       if (mCheckout != null) {
         mCheckout.setSnippet(snippet);
