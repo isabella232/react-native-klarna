@@ -25,46 +25,27 @@ public class KlarnaViewManager extends ViewGroupManager<LinearLayout> {
 
   @Override
   protected LinearLayout createViewInstance(ThemedReactContext themedReactContext) {
+    // Creating a wrapper instead of a view is needed for correct work of KLarnaCheckout.destroy()
     klarnaView = new KlarnaView(themedReactContext);
-    // creating a wrapper instead of a view is needed for correct work of KLarnaCheckout.destroy()
 
-    // Klarna WebView is not scrollable by itself we need to place it within scrollview wrapper
-    /*
-     <LinearLayout> <-so that scrollview is contained
-        <ScrollView> <-so that klarna view is scrollable
-          <LinearLayout> <- otherwise klarna view has height of 0
-            <FrameLayout> <-with a minimum height to accommodate expanding klarna view
-              <KlarnaView>
-     */
-
+    // The following hierarchy is required for Klarna to work properly:
+    //
+    // <LinearLayout /*container*/> - to wrap the scroll view
+    // ..<ScrollView /*scrollView*/> - because KlarnaView itself is not scrollable
+    // ....<FrameLayout /*contentView*/> - needed otherwise KlarnaView doesn't resize properly
+    // ......<KlarnaView /*view*/> - KlarnaView itself
     LinearLayout container = new LinearLayout(themedReactContext);
 
-    ScrollView wrapper = new ScrollView(themedReactContext);
+    ScrollView scrollView = new ScrollView(themedReactContext);
+    scrollView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    container.addView(scrollView);
 
-    FrameLayout frameLayout = new FrameLayout(themedReactContext);
-    frameLayout.setLayoutParams(new ViewGroup.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+    FrameLayout contentView = new FrameLayout(themedReactContext);
+    contentView.setLayoutParams(new ViewGroup.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+    scrollView.addView(contentView);
+
     final View view = klarnaView.getmView();
-
-    view.setLayoutParams(new ViewGroup.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-    frameLayout.addView(view);
-
-
-    float scale = themedReactContext.getResources().getConfiguration().fontScale;
-    float density = themedReactContext.getResources().getDisplayMetrics().density;
-    // Magic numbers needed to accommodate the biggest possible size of the view - it does not always auto-scale otherwise
-    // Numbers depend on font size and pixel density of a device
-    frameLayout.setMinimumHeight(Math.round(4700 * scale * density / 3));
-
-    LinearLayout linearLayout = new LinearLayout(themedReactContext);
-    linearLayout.setOrientation(LinearLayout.VERTICAL);
-    linearLayout.setLayoutParams(new ViewGroup.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
-
-
-    linearLayout.addView(frameLayout);
-
-    wrapper.addView(linearLayout);
-
-    container.addView(wrapper);
+    contentView.addView(view);
 
     return container;
   }
