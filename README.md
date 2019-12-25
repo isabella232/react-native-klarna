@@ -60,6 +60,10 @@ Add the following key with your bundle name to your Info.plist:
         targetCompatibility JavaVersion.VERSION_1_8
     }
     ```
+    add the following line inside the defaultConfig block:
+    ```gradle
+    resValue "string", "return_url_klarna", "<your-custom-url>"
+    ```
     add the following line inside the dependencies block:
     ```gradle
     implementation project(':react-native-klarna')
@@ -75,6 +79,11 @@ Add the following key with your bundle name to your Info.plist:
       compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+      }
+      ...
+      defaultConfig {
+        ...
+        resValue "string", "return_url_klarna", "<your-custom-url>"
       }
       ...
     }
@@ -101,6 +110,7 @@ Add the following key with your bundle name to your Info.plist:
       <data android:host="<your-custom-host>" />
     </intent-filter>
     ```
+    Notice that `<your-custom-scheme>` and `<your-custom-host>` here should match `<your-custom-url>` that you specified in `app/build.gradle` earlier.
 
 5.  Make sure that activity is using `launchMode` `singleTask` or `singleTop`:
     ```xml
